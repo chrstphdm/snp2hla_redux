@@ -629,8 +629,6 @@ def MakeReference_v2(_CHPED, _OUT, _hg, _genes="A,B,C,E,F,G,H,J,K,L,V,DMA,DMB,DO
                     os.system("rm {}".format(bim_ATtrick))
                     os.system("rm {}".format(a1_allele_ATtrick))
 
-
-
             if PHASE:
 
                 #print("[{}] Phasing reference using Beagle4.1.".format(index))
@@ -645,47 +643,28 @@ def MakeReference_v2(_CHPED, _OUT, _hg, _genes="A,B,C,E,F,G,H,J,K,L,V,DMA,DMB,DO
     
                 '''
 
-                # command = ' '.join([beagle, "gt={}".format(OUTPUT+'.bglv4.bgl.vcf'),
-                #                     "nthreads=1", "impute=false",
-                #                     "niterations=10", "lowmem=true", "out={}".format(OUTPUT+'.bglv4.bgl.phased'),
-                #                     '>', OUTPUT+'.bglv4.bgl.phased.vcf.log'])
-
-                #command = ' '.join([beagle, "gt={}".format(OUTPUT+'.bgl.vcf'),
-                #                   "impute=false", "nthreads={}".format(_nthreads),
-                #                    "niterations=5", "lowmem=true", "out={}".format(OUTPUT+'.bgl.phased')])
-                
-                if _map=="null":                
-                   
-                  command = ' '.join([beagle, "gt={}".format(OUTPUT+'.bgl.vcf'),
-                                      "impute=true", "nthreads={}".format(_nthreads),
-                                      "burnin={}".format(_burnin), "iterations={}".format(_iter),
-                                      "out={}".format(OUTPUT+'.bgl.phased'), "window={}".format(_window), "overlap={}".format(_overlap)])
-                
-                else:
-                
-                  command = ' '.join([beagle, "gt={}".format(OUTPUT+'.bgl.vcf'),
-                                      "impute=true", "nthreads={}".format(_nthreads),
-                                      "burnin={}".format(_burnin), "iterations={}".format(_iter),
-                                      "out={}".format(OUTPUT+'.bgl.phased'), "map={}".format(_map), "window={}".format(_window), "overlap={}".format(_overlap)])
-                                    
-                # print(command)
-
-                try:
-                    #os.system(command)
-                    f_log = open(OUTPUT+'.bgl.phased.vcf.log', 'w')
-                    subprocess.run(re.split(r'\s+',command), check=True, stdout=f_log, stderr=f_log)
-
-                except subprocess.CalledProcessError:
-                    # fail.
-                    print(std_ERROR_MAIN_PROCESS_NAME + "Phasing failed. See log file('{}').".format(OUTPUT+'.bgl.phased.vcf.log'))
-                    sys.exit()
+                command_parts = [
+                    beagle,
+                    f"gt={OUTPUT}.bgl.vcf",
+                    "impute=true",
+                    f"nthreads={_nthreads}",
+                    f"burnin={_burnin}",
+                    f"iterations={_iter}",
+                    f"out={OUTPUT}.bgl.phased",
+                    f"window={_window}",
+                    f"overlap={_overlap}"
+                ]
+                if _map != "null":
+                    command_parts.append(f"map={_map}")
+                command = " ".join(command_parts) + f" > {OUTPUT}.bgl.phased.vcf.log"
+                print(command)
+                result = subprocess.run(command, shell=True)
+                if result.returncode != 0:
+                    raise RuntimeError(f"Command failed with exit code {result.returncode}")
                 else:
                     # succeed.
-                    f_log.close()
                     if not f_save_intermediates:
-                        # os.system("rm {}".format())
                         os.system("rm {}".format(OUTPUT + '.bgl.vcf'))
-
                         # remove redundant log file.
                         os.system("rm {}".format(OUTPUT+'.bgl.phased.log'))
 
@@ -708,22 +687,12 @@ def MakeReference_v2(_CHPED, _OUT, _hg, _genes="A,B,C,E,F,G,H,J,K,L,V,DMA,DMB,DO
             rm $OUTPUT.phasing.log
             '''
 
-            #rm_tlist = ('.nopheno.ped', '.bgl.gprobs', '.bgl.r2', '.bgl', '.ped', '.map', '.dat')
-
-            #for i in rm_tlist:
-            #    print("rm " + OUTPUT + i)
-            #    os.system("rm " + OUTPUT + i)
-
             index += 1
-            
-            #command = ''.join(['mv ', OUTPUT, '.bgl.phased.vcf.gz ', OUTPUT, '_tmp.bgl.phased.vcf.gz'])
-            #os.system(command)
-            
-            command = ''.join(["bash MakeReference/src/Adjust_output.sh --path_Ref ", OUTPUT])
-            os.system(command)
-            
-            #command = ''.join(['rm ', OUTPUT, '_tmp.bgl.phased.vcf.gz'])
-            #os.system(command)
+            command = ''.join(["Adjust_output --path_Ref ", OUTPUT])
+            print(command)
+            result = subprocess.run(command, shell=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"Command failed with exit code {result.returncode}")
 
         print("[{}] Making reference panel for HLA and is Done!".format(index))
 
